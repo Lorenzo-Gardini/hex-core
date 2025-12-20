@@ -1,20 +1,14 @@
 """Hexagon coordinates module. Defines the HexagonCoordinates class for handling hexagonal grid coordinates. Coordinates are represented using axial coordinates (q, r). q is the coordinate along the horizontal axis, and r is the coordinate along the diagonal axis."""
 
+from typing import override
+from model.tile.coordinate import Coordinate
 
-class HexagonCoordinates:
-    def __init__(self, q: int, r: int):
-        self._q = q
-        self._r = r
 
-    @property
-    def r(self) -> int:
-        return self._r
+class HexagonCoordinates(Coordinate):
+    q: int
+    r: int
 
-    @property
-    def q(self) -> int:
-        return self._q
-
-    
+    @override
     def distance(self, other: "HexagonCoordinates") -> int:
         """Compute the distance between this hexagon and another hexagon.
         Args:

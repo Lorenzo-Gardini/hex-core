@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+from pydantic import BaseModel
 
 
-class Coordinate(ABC):
+class Coordinate(ABC, BaseModel):
     @abstractmethod
     def distance(self, other: "Coordinate") -> int:
         """Compute the distance between this coordinate and another coordinate.
@@ -20,3 +21,6 @@ class Coordinate(ABC):
             bool: True if the coordinates are nearby, False otherwise.
         """
         return self.distance(other) == 1
+
+    class Config:
+        frozen = True
