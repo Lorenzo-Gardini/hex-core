@@ -1,3 +1,7 @@
+from collections import Counter
+from typing import Callable
+
+from model.game_model.game_config import game_config_instance
 from model.game_model.game_status import GameStatus
 from model.game_model.game_update import (
     GameOverUpdate,
@@ -9,44 +13,46 @@ from model.game_model.game_update import (
     TroopSpawnedUpdate,
 )
 from model.game_model.player_actions import (
-    PlayerAction,
+    BasePlayerAction,
     SpawnTroopAction,
     MarchTroopAction,
+    PlayerAction,
 )
-from typing import Callable
-from collections import Counter
+from model.troops import HomeBaseTroop, BaseTroop
+from player.base_player import BasePlayer
 
-from model.player import Player
-from model.game_model.game_config import game_config_instance
-from model.troops.troops import HomeBaseTroop, Troop
-
-type PlayerInputs = dict[Player, list[PlayerAction]]
-type Stack = list
+PlayerInput = dict[BasePlayer, list[BasePlayerAction]]
+Stack = list
 
 
 class GameStatusUpdater:
     def __call__(
         self,
         game_status: GameStatus,
-        valid_input_actions: PlayerInputs,
-    ) -> list[GameUpdate]:
-        spawn_updates = self._process_player_action_by_type(
+        valid_input_actions: PlayerInput,
+    ) -> tuple[list[GameUpdate], GameStatus]:
+        spawn_updates, new_game_status = self._process_player_action_by_type(
             valid_input_actions,
             game_status,
             SpawnTroopAction,
             self._process_spawn_action,
         )
-        march_updates = self._process_player_action_by_type(
+        march_updates, new_game_status = self._process_player_action_by_type(
             valid_input_actions,
-            game_status,
+            new_game_status,
             MarchTroopAction,
             self._process_march_action,
         )
-        turn_updates = self._update_turn_and_check_game_over(game_status)
+        turn_updates, new_game_status = self._update_turn_and_check_game_over(
+            new_game_status
+        )
 
-        return [*spawn_updates, *march_updates, *turn_updates]
+        return [*spawn_updates, *march_updates, *turn_updates], new_game_status
 
-    def _update_turn_and_check_game_over(self, game_status: GameStatus) -> GameUpdate:
+    @staticmethod
+    def _update_turn_and_check_game_over(
+        game_status: GameStatus,
+    ) -> tuple[GameUpdate, GameStatus]:
         game_status.turn_number += 1
         board = game_status.board
 
@@ -63,80 +69,90 @@ class GameStatusUpdater:
                 game_status.player_order,
                 key=lambda p: (
                     player_to_troop_count[p],
-                    -game_status.player_order.index[p],
+                    -game_status.player_order.index(p),
                 ),
             )
-            game_status.winner = winner_player
-            return GameOverUpdate(winner=winner_player)
+            return GameOverUpdate(winner=winner_player), game_status.copy_with(
+                winner=winner_player
+            )
 
         # Check core control for winning condition. If a player's troop
         # occupies the core for a number of consecutive turns, they win.
-        core_troop: Troop | None = board.coordinates_to_tile[
+        core_troop: BaseTroop | None = board.coordinates_to_tile[
             board.core_coordinates
         ].occupation
 
         if core_troop is not None:
-            control_score = game_status.control_score
-            if core_troop not in control_score:
-                control_score[core_troop] = 1
-            else:
-                control_score[core_troop] += 1
+            new_control_score = game_status.control_score.score_for_troop(core_troop)
 
             if (
-                control_score[core_troop]
+                new_control_score.n_turn_of_control
                 >= game_config_instance.winning_core_control_turns
             ):
-                game_status.winner = core_troop.owner
-                return GameOverUpdate(winner=core_troop.owner)
+                return GameOverUpdate(winner=core_troop.owner), game_status.copy_with(
+                    winner=core_troop.owner, new_control_score=new_control_score
+                )
         else:
-            game_status.control_score.clear()
+            new_control_score = game_status.control_score.clear()
 
-        old_player_order = game_status.player_order
-        game_status.player_order = old_player_order[1:] + old_player_order[:1]
-        return GameStatusUpdate(game_status=game_status)
+        return GameStatusUpdate(game_status=game_status), game_status.copy_with(
+            player_order=game_status.player_order.turn_players_order(),
+            new_control_score=new_control_score,
+        )
 
+    @staticmethod
     def _process_player_action_by_type(
-        input_actions: PlayerInputs,
+        input_actions: PlayerInput,
         game_status: GameStatus,
         action_type: type[PlayerAction],
-        action_fn: Callable[[PlayerAction], GameUpdate],
-    ) -> list[GameUpdate]:
-        def as_list(x):
-            return x if isinstance(x, list) else [x]
+        action_fn: Callable[
+            [PlayerAction, GameStatus],
+            tuple[list[GameUpdate] | GameUpdate, GameStatus],
+        ],
+    ) -> tuple[list[GameUpdate], GameStatus]:
+        total_updates = []
 
-        return [
-            update
-            for action in input_actions
-            if isinstance(action, action_type)
-            for update in as_list(action_fn(action, game_status))
-        ]
+        new_game_status = game_status
+        for action in filter(lambda x: isinstance(x, action_type), input_actions):
+            updates, new_game_status = action_fn(action, new_game_status)
+            total_updates.extend(updates if isinstance(updates, list) else [updates])
 
+        return total_updates, game_status
+
+    @staticmethod
     def _process_spawn_action(
-        self, spawn_troops_action: SpawnTroopAction, game_status: GameStatus
-    ) -> GameUpdate:
-        game_status.board.add_player_troop(
-            spawn_troops_action.troop,
-            spawn_troops_action.coordinates,
+        spawn_troops_action: SpawnTroopAction, game_status: GameStatus
+    ) -> tuple[GameUpdate, GameStatus]:
+        spawned_troop = spawn_troops_action.troop
+        coordinates = spawn_troops_action.coordinates
+        new_game_status = game_status.copy_with(
+            board=game_status.board.add_player_troop(spawned_troop, coordinates)
         )
-        return TroopSpawnedUpdate(
-            troop=spawn_troops_action.troop,
-            coordinate=spawn_troops_action.coordinates,
+        return (
+            TroopSpawnedUpdate(
+                troop=spawned_troop,
+                coordinate=coordinates,
+            ),
+            new_game_status,
         )
 
+    @staticmethod
     def _process_march_action(
-        self, march_troops_action: MarchTroopAction, game_status: GameStatus
-    ) -> list[GameUpdate]:
+        march_troops_action: MarchTroopAction, game_status: GameStatus
+    ) -> tuple[list[GameUpdate], GameStatus]:
         game_updates: list[GameUpdate] = []
+        new_board = game_status.board
+        new_player_order = game_status.player_order
 
-        moving_troop: Troop = game_status.board.coordinates_to_tile[
+        moving_troop: BaseTroop = game_status.board.coordinates_to_tile[
             march_troops_action.starting_coordinates
         ]
-        defending_troop: Troop | None = game_status.board.coordinates_to_tile[
+        defending_troop: BaseTroop | None = game_status.board.coordinates_to_tile[
             march_troops_action.destination_coordinates
         ]
 
         if defending_troop is None or moving_troop > defending_troop:
-            game_status.board.move_troop(
+            new_board = new_board.move_troop(
                 march_troops_action.starting_coordinates,
                 march_troops_action.destination_coordinates,
             )
@@ -155,14 +171,16 @@ class GameStatusUpdater:
             )
             if isinstance(defending_troop, HomeBaseTroop):
                 removed_player = defending_troop.owner
-                game_status.board.remove_player_troops(defending_troop.owner)
-                game_status.player_order.remove(removed_player)
+                new_board = new_board.remove_player_troops(defending_troop.owner)
+                new_player_order = new_player_order.remove_player(removed_player)
                 game_updates.append(PlayerRemovedUpdate(player=removed_player))
 
         elif moving_troop < defending_troop:
-            game_status.board.remove_troop(march_troops_action.starting_coordinates)
+            new_board = new_board.remove_troop(march_troops_action.starting_coordinates)
             game_updates.append(
                 TroopRemovedUpdate(march_troops_action.starting_coordinates)
             )
 
-        return game_updates
+        return game_updates, game_status.copy_with(
+            board=new_board, player_order=new_player_order
+        )

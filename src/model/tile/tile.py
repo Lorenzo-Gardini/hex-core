@@ -1,9 +1,10 @@
 from pydantic import BaseModel
-from model.troops.troops import Troop
+
+from model.troops import BaseTroop
 
 
 class Tile(BaseModel):
-    occupation: Troop | None = None
+    occupation: BaseTroop | None = None
 
-    class Config:
+    class ConfigDict:
         frozen = True

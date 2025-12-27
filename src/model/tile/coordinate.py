@@ -22,5 +22,5 @@ class Coordinate(ABC, BaseModel):
         """
         return self.distance(other) == 1
 
-    class Config:
+    class ConfigDict:
         frozen = True
