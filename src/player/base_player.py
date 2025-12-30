@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from player.player_config import player_config
 
 
-class BasePlayer(BaseModel):
+class Player(BaseModel):
     player_id: str = Field(
         ...,
         min_length=player_config.username_min_length,

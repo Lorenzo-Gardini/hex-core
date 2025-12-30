@@ -1,30 +1,57 @@
+import copy
+from collections import defaultdict
+from typing import DefaultDict
+
 from pydantic import BaseModel
 
-from model.tile.hexagon_coordinates import HexagonCoordinates
-from model.tile.tile import Tile
-from model.troops import BaseTroop
-from player.base_player import BasePlayer
+from model.board.hexagon_coordinates import HexagonCoordinates
+from model.troops import Troop, PlayableTroopType, HomeBaseTroop
+from player.base_player import Player
 
 
 class Board(BaseModel):
-    coordinates_to_tile: dict[HexagonCoordinates, Tile]
+    coordinates_to_occupation: dict[HexagonCoordinates, Troop | None]
 
-    def add_player_troop(self, troop: BaseTroop, coordinate: HexagonCoordinates):
-        self.coordinates_to_tile[coordinate].occupation = troop
+    def add_player_troop(self, troop: Troop, coordinate: HexagonCoordinates) -> "Board":
+        new_board_state = copy.deepcopy(self.coordinates_to_occupation)
+        new_board_state[coordinate] = troop
+        return Board(coordinates_to_occupation=new_board_state)
 
     def move_troop(
         self,
         starting_coordinate: HexagonCoordinates,
         destination_coordinate: HexagonCoordinates,
-    ):
-        troop = self.coordinates_to_tile[starting_coordinate].occupation
-        self.coordinates_to_tile[destination_coordinate].occupation = troop
-        self.coordinates_to_tile[starting_coordinate].occupation = None
+    ) -> "Board":
+        new_board_state = copy.deepcopy(self.coordinates_to_occupation)
+        troop = new_board_state[starting_coordinate]
+        new_board_state[destination_coordinate] = troop
+        new_board_state[starting_coordinate] = None
+        return Board(coordinates_to_occupation=new_board_state)
 
-    def remove_troop(self, coordinate: HexagonCoordinates):
-        self.coordinates_to_tile[coordinate].occupation = None
+    def remove_troop(self, coordinate: HexagonCoordinates) -> "Board":
+        new_board_state = copy.deepcopy(self.coordinates_to_occupation)
+        new_board_state[coordinate] = None
+        return Board(coordinates_to_occupation=new_board_state)
 
-    def remove_player_troops(self, player: BasePlayer):
-        for tile in self.coordinates_to_tile.values():
-            if tile.occupation is not None and tile.occupation.owner == player:
-                tile.occupation = None
+    def playable_troop_by_players(self) -> dict[Player, dict[PlayableTroopType, int]]:
+        count: DefaultDict[Player, DefaultDict[PlayableTroopType, int]] = defaultdict(
+            lambda: defaultdict(int)
+        )
+
+        for occupation in self.coordinates_to_occupation.values():
+            if occupation is not None and not isinstance(occupation, HomeBaseTroop):
+                count[occupation.owner][occupation] += 1
+
+        return dict(count)
+
+    def remove_player_troops(self, player: Player) -> "Board":
+        new_board_state = copy.deepcopy(self.coordinates_to_occupation)
+        for coordinate in new_board_state.keys():
+
+            if (
+                new_board_state[coordinate] is not None
+                and new_board_state[coordinate].owner == player
+            ):
+                new_board_state[coordinate] = None
+
+        return Board(coordinates_to_occupation=new_board_state)

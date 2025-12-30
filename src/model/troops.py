@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Literal, Union, Annotated
+from typing import Literal, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from player.base_player import BasePlayer
+from player.base_player import Player
 
 
 class BaseTroop(BaseModel, ABC):
-    owner: BasePlayer
+    owner: Player
 
     @abstractmethod
     def __gt__(self, other: "BaseTroop") -> bool:
@@ -77,11 +77,6 @@ class HomeBaseTroop(BaseTroop):
         return False
 
 
-PlayableTroopType = Annotated[
-    Union[TriangleTroop, SquareTroop, PentagonTroop], Field(discriminator="troop_type")
-]
+PlayableTroopType = Union[TriangleTroop, SquareTroop, PentagonTroop]
 
-Troop = Annotated[
-    Union[TriangleTroop, SquareTroop, PentagonTroop, HomeBaseTroop],
-    Field(discriminator="troop_type"),
-]
+Troop = Union[TriangleTroop, SquareTroop, PentagonTroop, HomeBaseTroop]

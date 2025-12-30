@@ -1,4 +1,4 @@
-from model.tile.hexagon_coordinates import HexagonCoordinates
+from model.board.hexagon_coordinates import HexagonCoordinates
 
 
 def test_hexagon_are_nearby():

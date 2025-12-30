@@ -1,11 +1,11 @@
 from clonable_base_model import ClonableBaseModel
-from player.base_player import BasePlayer
+from player.base_player import Player
 
 
 class PlayerOrder(ClonableBaseModel):
-    players: list[BasePlayer]
+    players: list[Player]
 
-    def remove_player(self, player: BasePlayer) -> "PlayerOrder":
+    def remove_player(self, player: Player) -> "PlayerOrder":
         return PlayerOrder(
             players=[
                 not_removed for not_removed in self.players if not_removed != player

@@ -3,12 +3,12 @@ from typing import Callable
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from model.game_model.player_actions import PlayerAction
-from player.base_player import BasePlayer
+from model.game_model.player_actions import GameAction
+from player.base_player import Player
 from player.in_game_player import InGamePlayer
 
 
-class InLobbyPlayer(BasePlayer):
+class InLobbyPlayer(Player):
 
     def __init__(
         self,
@@ -23,19 +23,19 @@ class InLobbyPlayer(BasePlayer):
         super().__init__(player_id=player_id, username=username)
 
     def to_game_player(
-        self, player_action_callback: Callable[[PlayerAction], None]
+        self,
+        add_player_action_callback: Callable[[InGamePlayer, GameAction], None],
+        clear_player_actions_callback: Callable[[InGamePlayer], None],
     ) -> InGamePlayer:
         self._disconnection_task.cancel()
-        try:
-            asyncio.get_event_loop().run_until_complete(self._disconnection_task)
-        except asyncio.CancelledError:
-            pass
+        self._disconnection_task.add_done_callback(lambda _: None)
 
         return InGamePlayer(
             player_id=self.player_id,
             username=self.username,
             websocket=self._websocket,
-            player_action_callback=player_action_callback,
+            add_player_action_callback=add_player_action_callback,
+            clear_player_actions_callback=clear_player_actions_callback,
         )
 
     async def _is_alive_task(self):

@@ -1,11 +1,11 @@
 from model.board.board import Board
-from model.game_model.game_status import GameStatus
+from model.board.hexagon_coordinates import HexagonCoordinates
+from model.game_model.game_status.game_status import GameStatus
 from model.game_model.player_actions import (
-    BasePlayerAction,
     MarchTroopAction,
     SpawnTroopAction,
+    GameAction,
 )
-from model.tile.hexagon_coordinates import HexagonCoordinates
 from model.troops import (
     HomeBaseTroop,
     BaseTroop,
@@ -13,7 +13,7 @@ from model.troops import (
     TriangleTroop,
     PentagonTroop,
 )
-from player.base_player import BasePlayer
+from player.base_player import Player
 
 
 def _troop_is_present(board: Board, coordinates: HexagonCoordinates) -> bool:
@@ -25,7 +25,7 @@ def _coordinates_out_of_board(board: Board, coordinates: HexagonCoordinates) -> 
 
 
 def _is_tile_of_player(
-    board: Board, coordinates: HexagonCoordinates, player: BasePlayer
+    board: Board, coordinates: HexagonCoordinates, player: Player
 ) -> bool:
     occupation = board.coordinates_to_tile[coordinates].occupation
     return occupation is not None and occupation.owner == player
@@ -40,7 +40,7 @@ def _is_occupied(board: Board, coordinates: HexagonCoordinates) -> bool:
 
 
 def _is_near_player_home_base(
-    board: Board, coordinates: HexagonCoordinates, player: BasePlayer
+    board: Board, coordinates: HexagonCoordinates, player: Player
 ) -> bool:
     home_base_coordinates = next(
         (
@@ -59,11 +59,12 @@ def _is_near_player_home_base(
     )
 
 
-def is_valid_action(player_action: BasePlayerAction, game_status: GameStatus) -> bool:
+def is_valid_action(
+    player: Player, action: GameAction, game_status: GameStatus
+) -> bool:
     board = game_status.board
-    match player_action:
+    match action:
         case MarchTroopAction(
-            player=player,
             starting_coordinates=starting_coordinates,
             destination_coordinates=destination_coordinates,
         ):
@@ -72,11 +73,11 @@ def is_valid_action(player_action: BasePlayerAction, game_status: GameStatus) ->
                 lambda: _coordinates_out_of_board(board, destination_coordinates),
                 lambda: not _troop_is_present(board, starting_coordinates),
                 lambda: not _is_tile_of_player(board, starting_coordinates, player),
-                lambda: _is_tile_of_player(board, destination_coordinates, player),
+                # lambda: _is_tile_of_player(board, destination_coordinates, player),
             ]
             return not any(condition() for condition in conditions)
 
-        case SpawnTroopAction(player=player, coordinates=coordinates, troop=troop):
+        case SpawnTroopAction(coordinates=coordinates, troop=troop):
             conditions = [
                 lambda: _coordinates_out_of_board(board, coordinates),
                 lambda: _is_occupied(board, coordinates),

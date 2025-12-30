@@ -1,42 +1,31 @@
-from typing import Union, Literal, Annotated
+from typing import Union, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from model.tile.hexagon_coordinates import HexagonCoordinates
+from model.board.hexagon_coordinates import HexagonCoordinates
+from model.game_model.game_config import game_config
 from model.troops import PlayableTroopType
-from player.base_player import BasePlayer
 
 
-class BasePlayerAction(BaseModel):
-    player: BasePlayer
+class GameAction(BaseModel):
+    action_points_cost: int
 
     class ConfigDict:
         frozen = True
 
 
-class UndoAction(BasePlayerAction):
-    player_action_type: Literal["undo_action"] = "undo_action"
-    player_action: BasePlayerAction
-
-
-class SetAction(BasePlayerAction):
-    player_action_type: Literal["set_action"] = "set_action"
-    player_action: BasePlayerAction
-
-
-class MarchTroopAction(BasePlayerAction):
+class MarchTroopAction(GameAction):
+    action_points_cost: int = game_config.march_troop_action_points
     player_action_type: Literal["march_troop_action"] = "march_troop_action"
     starting_coordinates: HexagonCoordinates
     destination_coordinates: HexagonCoordinates
 
 
-class SpawnTroopAction(BasePlayerAction):
+class SpawnTroopAction(GameAction):
+    action_points_cost: int = game_config.spawn_troop_action_points
     action_type: Literal["spawn_troop_action"] = "spawn_troop_action"
     coordinates: HexagonCoordinates
     troop: PlayableTroopType
 
 
-PlayerAction = Annotated[
-    Union[MarchTroopAction, SpawnTroopAction, UndoAction, SetAction],
-    Field(discriminator="action_type"),
-]
+GameAction = Union[MarchTroopAction, SpawnTroopAction]
