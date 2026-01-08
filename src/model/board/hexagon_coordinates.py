@@ -1,5 +1,6 @@
 """Hexagon coordinates module. Defines the HexagonCoordinates class for handling hexagonal grid coordinates. Coordinates are represented using axial coordinates (q, r). q is the coordinate along the horizontal axis, and r is the coordinate along the diagonal axis."""
 
+from math import sqrt
 from typing import override
 
 from model.board.coordinate import Coordinate
@@ -8,6 +9,16 @@ from model.board.coordinate import Coordinate
 class HexagonCoordinates(Coordinate):
     q: int
     r: int
+
+    def __hash__(self):
+        return hash((self.q, self.r))
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, HexagonCoordinates)
+            and self.q == other.q
+            and self.r == other.r
+        )
 
     @override
     def distance(self, other: "HexagonCoordinates") -> int:
@@ -23,3 +34,8 @@ class HexagonCoordinates(Coordinate):
         x2, z2 = other.q, other.r
         y2 = -x2 - z2
         return max(abs(x1 - x2), abs(y1 - y2), abs(z1 - z2))
+
+    def to_xy(self):
+        x = 3 / 2 * self.q
+        y = sqrt(3) * (self.r + self.q / 2)
+        return x, y

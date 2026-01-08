@@ -4,7 +4,7 @@ from clonable_base_model import ClonableBaseModel
 from model.board.board import Board
 from model.game_model.core_control_score import CoreControlScore
 from model.game_model.player_order import PlayerOrder
-from player.base_player import Player
+from player.player import Player
 
 
 class GameStatus(ClonableBaseModel):

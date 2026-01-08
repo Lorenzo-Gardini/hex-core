@@ -13,7 +13,7 @@ from model.troops import (
     TriangleTroop,
     PentagonTroop,
 )
-from player.base_player import Player
+from player.player import Player
 
 
 def _troop_is_present(board: Board, coordinates: HexagonCoordinates) -> bool:

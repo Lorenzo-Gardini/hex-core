@@ -2,15 +2,25 @@ import copy
 from collections import defaultdict
 from typing import DefaultDict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 
 from model.board.hexagon_coordinates import HexagonCoordinates
 from model.troops import Troop, PlayableTroopType, HomeBaseTroop
-from player.base_player import Player
+from player.player import Player
 
 
 class Board(BaseModel):
     coordinates_to_occupation: dict[HexagonCoordinates, Troop | None]
+
+    @field_serializer("coordinates_to_occupation")
+    def serialize_coordinates_to_occupation(
+        self, coordinates_to_occupation: dict[HexagonCoordinates, Troop | None]
+    ):
+
+        return [
+            (coord.q, coord.r, troop)
+            for coord, troop in coordinates_to_occupation.items()
+        ]
 
     def add_player_troop(self, troop: Troop, coordinate: HexagonCoordinates) -> "Board":
         new_board_state = copy.deepcopy(self.coordinates_to_occupation)

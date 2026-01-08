@@ -1,5 +1,5 @@
 from clonable_base_model import ClonableBaseModel
-from player.base_player import Player
+from player.player import Player
 
 
 class PlayerOrder(ClonableBaseModel):

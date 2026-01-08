@@ -3,7 +3,7 @@ from typing import Literal, Union
 
 from pydantic import BaseModel
 
-from player.base_player import Player
+from player.player import Player
 
 
 class BaseTroop(BaseModel, ABC):

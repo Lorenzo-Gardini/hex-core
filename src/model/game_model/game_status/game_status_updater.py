@@ -21,7 +21,7 @@ from model.game_model.player_actions import (
     GameAction,
 )
 from model.troops import HomeBaseTroop, BaseTroop
-from player.base_player import Player
+from player.player import Player
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ class _PlayerDoAction:
     game_action: GameAction
 
 
-def game_status_updater(
+def update_game_status(
     game_status: GameStatus,
     game_actions: dict[Player, list[GameAction]],
     is_valid_action: Callable[[Player, GameAction, GameStatus], bool],
